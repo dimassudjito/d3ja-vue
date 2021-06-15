@@ -1,6 +1,6 @@
 {
   "name": "d3ja-vue",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "dist/d3ja-vue.ssr.js",
   "browser": "dist/d3ja-vue.esm.js",
