@@ -5,55 +5,101 @@
 <script>
 import * as d3 from 'd3'
 
+function linkStep(startAngle, startRadius, endAngle, endRadius) {
+  const c0 = Math.cos((startAngle = ((startAngle - 90) / 180) * Math.PI))
+  const s0 = Math.sin(startAngle)
+  const c1 = Math.cos((endAngle = ((endAngle - 90) / 180) * Math.PI))
+  const s1 = Math.sin(endAngle)
+  return (
+    'M' +
+    startRadius * c0 +
+    ',' +
+    startRadius * s0 +
+    (endAngle === startAngle
+      ? ''
+      : 'A' +
+        startRadius +
+        ',' +
+        startRadius +
+        ' 0 0 ' +
+        (endAngle > startAngle ? 1 : 0) +
+        ' ' +
+        startRadius * c1 +
+        ',' +
+        startRadius * s1) +
+    'L' +
+    endRadius * c1 +
+    ',' +
+    endRadius * s1
+  )
+}
+
+function linkExtensionConstant(d) {
+  return linkStep(d.target.x, d.target.y, d.target.x, this.innerRadius)
+}
+
+function linkExtensionVariable(d) {
+  return linkStep(d.target.x, d.target.radius, d.target.x, this.innerRadius)
+}
+
+function linkConstant(d) {
+  return linkStep(d.source.x, d.source.y, d.target.x, d.target.y)
+}
+
 export default {
   name: 'TreeOfLife',
-  data() {
-    return {
-      life:
-        '(Bovine:0.69395,(Gibbon:0.36079,(Orang:0.33636,(Gorilla:0.17147,(Chimp:0.19268, Human:0.11927):0.08386):0.06124):0.15057):0.54939,Mouse:1.21460):0.10;'
-    }
+  props: {
+    tree: String
   },
   mounted() {
     this.getChart()
   },
+  data() {
+    return {
+      width: 900
+    }
+  },
+  computed: {
+    outerRadius() {
+      return this.width / 2
+    },
+    innerRadius() {
+      return this.outerRadius - 170
+    }
+  },
   methods: {
-    getChart() {
-      function parseNewick(a) {
-        for (
-          var e = [], r = {}, s = a.split(/\s*(;|\(|\)|,|:)\s*/), t = 0;
-          t < s.length;
-          t++
-        ) {
-          var n = s[t]
-          switch (n) {
-            case '(':
-              var c = {}
-              ;(r.branchset = [c]), e.push(r), (r = c)
-              break
-            case ',':
-              var c = {}
-              e[e.length - 1].branchset.push(c), (r = c)
-              break
-            case ')':
-              r = e.pop()
-              break
-            case ':':
-              break
-            default:
-              var h = s[t - 1]
-              ')' == h || '(' == h || ',' == h
-                ? (r.name = n)
-                : ':' == h && (r.length = parseFloat(n))
-          }
+    parseNewick(a) {
+      for (
+        var e = [], r = {}, s = a.split(/\s*(;|\(|\)|,|:)\s*/), t = 0;
+        t < s.length;
+        t++
+      ) {
+        var n = s[t]
+        switch (n) {
+          case '(':
+            var c = {}
+            ;(r.branchset = [c]), e.push(r), (r = c)
+            break
+          case ',':
+            var c = {}
+            e[e.length - 1].branchset.push(c), (r = c)
+            break
+          case ')':
+            r = e.pop()
+            break
+          case ':':
+            break
+          default:
+            var h = s[t - 1]
+            ')' == h || '(' == h || ',' == h
+              ? (r.name = n)
+              : ':' == h && (r.length = parseFloat(n))
         }
-        return r
       }
-
-      let data = parseNewick(this.life)
-      let width = 900
-      let outerRadius = width / 2
-      let innerRadius = outerRadius - 170
-
+      return r
+    },
+    getChart() {
+      let data = this.parseNewick(this.tree)
       let legend = (svg) => {
         const g = svg
           .selectAll('g')
@@ -61,7 +107,8 @@ export default {
           .join('g')
           .attr(
             'transform',
-            (d, i) => `translate(${-outerRadius},${-outerRadius + i * 20})`
+            (d, i) =>
+              `translate(${-this.outerRadius},${-this.outerRadius + i * 20})`
           )
 
         g.append('rect')
@@ -74,47 +121,6 @@ export default {
           .attr('y', 9)
           .attr('dy', '0.35em')
           .text((d) => d)
-      }
-
-      function linkStep(startAngle, startRadius, endAngle, endRadius) {
-        const c0 = Math.cos((startAngle = ((startAngle - 90) / 180) * Math.PI))
-        const s0 = Math.sin(startAngle)
-        const c1 = Math.cos((endAngle = ((endAngle - 90) / 180) * Math.PI))
-        const s1 = Math.sin(endAngle)
-        return (
-          'M' +
-          startRadius * c0 +
-          ',' +
-          startRadius * s0 +
-          (endAngle === startAngle
-            ? ''
-            : 'A' +
-              startRadius +
-              ',' +
-              startRadius +
-              ' 0 0 ' +
-              (endAngle > startAngle ? 1 : 0) +
-              ' ' +
-              startRadius * c1 +
-              ',' +
-              startRadius * s1) +
-          'L' +
-          endRadius * c1 +
-          ',' +
-          endRadius * s1
-        )
-      }
-
-      function linkExtensionConstant(d) {
-        return linkStep(d.target.x, d.target.y, d.target.x, innerRadius)
-      }
-
-      function linkExtensionVariable(d) {
-        return linkStep(d.target.x, d.target.radius, d.target.x, innerRadius)
-      }
-
-      function linkConstant(d) {
-        return linkStep(d.source.x, d.source.y, d.target.x, d.target.y)
       }
 
       function linkVariable(d) {
@@ -156,7 +162,7 @@ export default {
 
       let cluster = d3
         .cluster()
-        .size([360, innerRadius])
+        .size([360, this.innerRadius])
         .separation((a, b) => 1)
       const root = d3
         .hierarchy(data, (d) => d.branchset)
@@ -167,13 +173,22 @@ export default {
         )
 
       cluster(root)
-      setRadius(root, (root.data.length = 0), innerRadius / maxLength(root))
+      setRadius(
+        root,
+        (root.data.length = 0),
+        this.innerRadius / maxLength(root)
+      )
       setColor(root)
 
       const svg = d3
         .select('.container')
         .append('svg')
-        .attr('viewBox', [-outerRadius, -outerRadius, width, width])
+        .attr('viewBox', [
+          -this.outerRadius,
+          -this.outerRadius,
+          this.width,
+          this.width
+        ])
         .attr('font-family', 'sans-serif')
         .attr('font-size', 10)
 
@@ -231,7 +246,7 @@ export default {
         .attr(
           'transform',
           (d) =>
-            `rotate(${d.x - 90}) translate(${innerRadius + 4},0)${
+            `rotate(${d.x - 90}) translate(${this.innerRadius + 4},0)${
               d.x < 180 ? '' : ' rotate(180)'
             }`
         )
