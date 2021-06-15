@@ -34,14 +34,6 @@ function linkStep(startAngle, startRadius, endAngle, endRadius) {
   )
 }
 
-function linkExtensionConstant(d) {
-  return linkStep(d.target.x, d.target.y, d.target.x, this.innerRadius)
-}
-
-function linkExtensionVariable(d) {
-  return linkStep(d.target.x, d.target.radius, d.target.x, this.innerRadius)
-}
-
 function linkConstant(d) {
   return linkStep(d.source.x, d.source.y, d.target.x, d.target.y)
 }
@@ -57,14 +49,6 @@ export default {
   data() {
     return {
       width: 900
-    }
-  },
-  computed: {
-    outerRadius() {
-      return this.width / 2
-    },
-    innerRadius() {
-      return this.outerRadius - 170
     }
   },
   methods: {
@@ -100,6 +84,9 @@ export default {
     },
     getChart() {
       let data = this.parseNewick(this.tree)
+      let outerRadius = this.width / 2
+      let innerRadius = outerRadius - 170
+
       let legend = (svg) => {
         const g = svg
           .selectAll('g')
@@ -107,8 +94,7 @@ export default {
           .join('g')
           .attr(
             'transform',
-            (d, i) =>
-              `translate(${-this.outerRadius},${-this.outerRadius + i * 20})`
+            (d, i) => `translate(${-outerRadius},${-outerRadius + i * 20})`
           )
 
         g.append('rect')
@@ -130,6 +116,14 @@ export default {
           d.target.x,
           d.target.radius
         )
+      }
+
+      function linkExtensionConstant(d) {
+        return linkStep(d.target.x, d.target.y, d.target.x, innerRadius)
+      }
+
+      function linkExtensionVariable(d) {
+        return linkStep(d.target.x, d.target.radius, d.target.x, innerRadius)
       }
 
       // Set the color of each node by recursively inheriting.
@@ -162,7 +156,7 @@ export default {
 
       let cluster = d3
         .cluster()
-        .size([360, this.innerRadius])
+        .size([360, innerRadius])
         .separation((a, b) => 1)
       const root = d3
         .hierarchy(data, (d) => d.branchset)
@@ -173,22 +167,13 @@ export default {
         )
 
       cluster(root)
-      setRadius(
-        root,
-        (root.data.length = 0),
-        this.innerRadius / maxLength(root)
-      )
+      setRadius(root, (root.data.length = 0), innerRadius / maxLength(root))
       setColor(root)
 
       const svg = d3
         .select('.container')
         .append('svg')
-        .attr('viewBox', [
-          -this.outerRadius,
-          -this.outerRadius,
-          this.width,
-          this.width
-        ])
+        .attr('viewBox', [-outerRadius, -outerRadius, this.width, this.width])
         .attr('font-family', 'sans-serif')
         .attr('font-size', 10)
 
@@ -246,7 +231,7 @@ export default {
         .attr(
           'transform',
           (d) =>
-            `rotate(${d.x - 90}) translate(${this.innerRadius + 4},0)${
+            `rotate(${d.x - 90}) translate(${innerRadius + 4},0)${
               d.x < 180 ? '' : ' rotate(180)'
             }`
         )
